@@ -84,14 +84,8 @@ Rules:
         # لو المستخدم حدد موديل معين
         if model and model in self.models:
             self.model = model
-
-        elif self.models:
-            self.model = self.models[0]
-
         else:
-            raise RuntimeError(
-                "لم يتم العثور على أي Gemini model متاح لهذا API Key."
-            )
+            self.model = self.models[0]
 
         # ==========================================
         # Create Chat
@@ -106,84 +100,21 @@ Rules:
     # ==========================================
 
     def _get_available_models(self):
+        """Return a priority-ordered list of known stable Gemini models.
 
-        available = []
+        We use a hardcoded list instead of runtime discovery because the
+        models.list() API field names differ across SDK versions and can
+        silently return an empty list, crashing the app at startup.
+        """
 
-        try:
-
-            for item in self.client.models.list():
-
-                name = getattr(item, "name", "")
-
-                if not name:
-                    continue
-
-                # إزالة models/ من الاسم
-                if name.startswith("models/"):
-                    name = name.replace(
-                        "models/",
-                        "",
-                        1
-                    )
-
-                # نريد فقط موديلات Gemini
-                if "gemini" not in name.lower():
-                    continue
-
-                # نحتاج موديلات تدعم generateContent
-                actions = getattr(
-                    item,
-                    "supported_actions",
-                    []
-                )
-
-                if actions:
-
-                    actions_text = str(actions).lower()
-
-                    if (
-                        "generatecontent"
-                        not in actions_text
-                        and "generate_content"
-                        not in actions_text
-                    ):
-                        continue
-
-                available.append(name)
-
-        except Exception as error:
-
-            print(
-                "Model discovery error:",
-                error
-            )
-
-        # ==========================================
-        # ترتيب الموديلات
-        # ==========================================
-
-        preferred = [
-            "gemini-3.5-flash",
-            "gemini-3.1-flash-lite",
-            "gemini-3-flash",
-            "gemini-2.5-flash-lite",
+        return [
             "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b",
         ]
-
-        ordered = []
-
-        for model in preferred:
-
-            if model in available:
-                ordered.append(model)
-
-        # إضافة أي موديلات أخرى
-        for model in available:
-
-            if model not in ordered:
-                ordered.append(model)
-
-        return ordered
 
     # ==========================================
     # Create Chat
