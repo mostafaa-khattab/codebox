@@ -2,25 +2,17 @@ import asyncio
 import os
 import re
 import tempfile
-import threading
+
 
 import edge_tts
-import pygame
 
 
 class Speaker:
     """Professional Text-To-Speech system for CodeBox."""
 
     def __init__(self):
-        pygame.mixer.init()
-
         self.arabic_voice = "ar-EG-SalmaNeural"
         self.english_voice = "en-US-JennyNeural"
-
-        self.stop_requested = False
-        self.is_speaking = False
-
-        self.thread = None
 
     # ==========================================
     # Clean Text
@@ -120,56 +112,41 @@ class Speaker:
         await communicate.save(filename)
 
     # ==========================================
-    # Speak
+    # Speak — returns MP3 bytes for st.audio()
     # ==========================================
 
-    def speak(self, text: str):
+    def speak(self, text: str) -> bytes | None:
+        """Generate TTS audio and return MP3 bytes.
+
+        The caller is responsible for playing the audio
+        (e.g. via st.audio(bytes, format='audio/mp3', autoplay=True)).
+        Returns None if generation fails.
+        """
 
         text = self.clean_text(text)
 
         if not text:
-            return
-
-        # Stop previous speech
-        self.stop()
-
-        self.stop_requested = False
-
-        self.thread = threading.Thread(
-            target=self._speak_worker,
-            args=(text,),
-            daemon=True,
-        )
-
-        self.thread.start()
-
-    # ==========================================
-    # Worker
-    # ==========================================
-
-    def _speak_worker(self, text):
+            return None
 
         temp_file = None
 
         try:
 
-            self.is_speaking = True
-
             # Select voice
-            if self.is_arabic(text):
-                voice = self.arabic_voice
-            else:
-                voice = self.english_voice
+            voice = (
+                self.arabic_voice
+                if self.is_arabic(text)
+                else self.english_voice
+            )
 
-            # Temporary MP3
+            # Write to a temporary MP3 file
             with tempfile.NamedTemporaryFile(
                 suffix=".mp3",
                 delete=False,
             ) as file:
-
                 temp_file = file.name
 
-            # Generate audio
+            # Generate audio via edge-tts
             asyncio.run(
                 self._generate_audio(
                     text,
@@ -178,99 +155,40 @@ class Speaker:
                 )
             )
 
-            if self.stop_requested:
-                return
-
-            # Load audio
-            pygame.mixer.music.load(
-                temp_file
-            )
-
-            if self.stop_requested:
-                return
-
-            # Play
-            pygame.mixer.music.play()
-
-            # Monitor playback
-            while pygame.mixer.music.get_busy():
-
-                if self.stop_requested:
-
-                    pygame.mixer.music.stop()
-
-                    break
-
-                pygame.time.Clock().tick(30)
+            # Read bytes and return them
+            with open(temp_file, "rb") as f:
+                return f.read()
 
         except Exception as error:
-
-            print(
-                f"Speech Error: {error}"
-            )
+            print(f"Speech Error: {error}")
+            return None
 
         finally:
-
-            self.is_speaking = False
-
-            try:
-                pygame.mixer.music.stop()
-                pygame.mixer.music.unload()
-            except Exception:
-                pass
-
-            if (
-                temp_file
-                and os.path.exists(temp_file)
-            ):
-
+            if temp_file and os.path.exists(temp_file):
                 try:
                     os.remove(temp_file)
-
                 except Exception:
                     pass
 
     # ==========================================
-    # Stop Immediately
+    # Stop (no-op — browser handles playback)
     # ==========================================
 
     def stop(self):
-
-        self.stop_requested = True
-
-        try:
-            pygame.mixer.music.stop()
-            pygame.mixer.music.unload()
-
-        except Exception:
-            pass
-
-        self.is_speaking = False
+        """Playback is handled by the browser; nothing to stop server-side."""
+        pass
 
     # ==========================================
-    # Status
+    # Status (no-op — browser handles playback)
     # ==========================================
 
-    def is_playing(self):
-
-        try:
-
-            return pygame.mixer.music.get_busy()
-
-        except Exception:
-
-            return False
+    def is_playing(self) -> bool:
+        """Playback is handled by the browser; always returns False."""
+        return False
 
     # ==========================================
-    # Cleanup
+    # Cleanup (no-op)
     # ==========================================
 
     def cleanup(self):
-
-        self.stop()
-
-        try:
-            pygame.mixer.quit()
-
-        except Exception:
-            pass
+        pass

@@ -1,4 +1,3 @@
-import io
 
 import streamlit as st
 import speech_recognition as sr
@@ -313,12 +312,19 @@ if user_message:
         )
 
 
-        # Speak automatically
+        # Speak automatically — play in browser
         if st.session_state.speaker:
 
-            st.session_state.speaker.speak(
+            audio_bytes = st.session_state.speaker.speak(
                 response
             )
+
+            if audio_bytes:
+                st.audio(
+                    audio_bytes,
+                    format="audio/mp3",
+                    autoplay=True,
+                )
 
 
     # ----------------------------------------------
@@ -363,13 +369,19 @@ with audio_col1:
             and st.session_state.last_response
         ):
 
-            st.session_state.speaker.speak(
+            audio_bytes = st.session_state.speaker.speak(
                 st.session_state.last_response
             )
 
-            st.toast(
-                "🔊 يتم تشغيل آخر رد"
-            )
+            if audio_bytes:
+                st.audio(
+                    audio_bytes,
+                    format="audio/mp3",
+                    autoplay=True,
+                )
+                st.toast(
+                    "🔊 يتم تشغيل آخر رد"
+                )
 
         else:
 
@@ -468,17 +480,9 @@ with st.sidebar:
 
     if st.session_state.speaker:
 
-        if st.session_state.speaker.is_playing():
-
-            st.warning(
-                "🗣️ المساعد يتحدث الآن"
-            )
-
-        else:
-
-            st.success(
-                "🟢 المساعد جاهز"
-            )
+        st.success(
+            "🟢 المساعد جاهز"
+        )
 
     else:
 
@@ -509,9 +513,16 @@ with st.sidebar:
             and st.session_state.last_response
         ):
 
-            st.session_state.speaker.speak(
+            audio_bytes = st.session_state.speaker.speak(
                 st.session_state.last_response
             )
+
+            if audio_bytes:
+                st.audio(
+                    audio_bytes,
+                    format="audio/mp3",
+                    autoplay=True,
+                )
 
 
     if st.button(
