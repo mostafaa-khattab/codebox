@@ -1,5 +1,6 @@
 altair==6.2.2
 edge-tts
+google-genai
 SpeechRecognition
 anyio==4.14.2
 attrs==26.1.0
